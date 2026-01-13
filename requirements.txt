@@ -1,0 +1,8 @@
+# Python Dependencies for Construction Project Manager
+# Install with: pip install -r requirements.txt
+
+# Firebase Admin SDK for Firestore access
+firebase-admin>=6.2.0
+
+# Google Cloud Firestore (included with firebase-admin, but explicit for clarity)
+google-cloud-firestore>=2.11.0
