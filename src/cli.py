@@ -3,6 +3,7 @@ Command Line Interface for Construction Project Manager.
 
 This module provides an interactive CLI for managing construction
 projects and tasks using the cloud-based Firestore database.
+Includes user authentication and real-time notifications.
 
 Author: Construction Solutions
 """
@@ -19,8 +20,11 @@ from src.config import AppConfig
 from src.services.firebase_service import FirebaseService
 from src.services.project_repository import ProjectRepository
 from src.services.task_repository import TaskRepository
+from src.services.auth_service import AuthService
+from src.services.notification_service import NotificationService, Notification
 from src.models.project import Project, ProjectStatus
 from src.models.task import Task, TaskStatus, TaskPriority
+from src.models.user import User
 
 
 class ConstructionManagerCLI:
@@ -28,7 +32,8 @@ class ConstructionManagerCLI:
     Interactive command-line interface for the Construction Project Manager.
     
     This class provides a menu-driven interface for performing CRUD
-    operations on projects and tasks.
+    operations on projects and tasks, with user authentication and
+    real-time notifications.
     """
     
     def __init__(self):
@@ -36,7 +41,24 @@ class ConstructionManagerCLI:
         self.firebase: Optional[FirebaseService] = None
         self.project_repo: Optional[ProjectRepository] = None
         self.task_repo: Optional[TaskRepository] = None
+        self.auth_service: Optional[AuthService] = None
+        self.notification_service: Optional[NotificationService] = None
+        self.config: Optional[AppConfig] = None
         self.running = True
+        self._notification_display_enabled = True
+    
+    def _on_notification(self, notification: Notification) -> None:
+        """
+        Callback function for real-time notifications.
+        
+        This is called automatically when data changes in Firestore.
+        
+        Args:
+            notification: The notification received from Firestore
+        """
+        if self._notification_display_enabled:
+            print(f"\n🔔 REAL-TIME UPDATE: {notification}")
+            print("   (Data changed in cloud database)")
     
     def initialize(self) -> bool:
         """
@@ -51,16 +73,26 @@ class ConstructionManagerCLI:
             print("   Cloud Database Management System")
             print("=" * 60)
             
-            config = AppConfig.load()
+            self.config = AppConfig.load()
             
             self.firebase = FirebaseService()
             self.firebase.initialize(
-                config.firebase.credentials_path,
-                config.firebase.project_id
+                self.config.firebase.credentials_path,
+                self.config.firebase.project_id
             )
             
             self.project_repo = ProjectRepository(self.firebase)
             self.task_repo = TaskRepository(self.firebase)
+            
+            # Initialize authentication service
+            self.auth_service = AuthService(
+                self.firebase,
+                self.config.firebase.api_key
+            )
+            
+            # Initialize notification service for real-time updates
+            self.notification_service = NotificationService(self.firebase)
+            self.notification_service.add_callback(self._on_notification)
             
             print("\n✓ Connected to Firebase successfully!")
             return True
@@ -70,20 +102,113 @@ class ConstructionManagerCLI:
             print("\nPlease set the following environment variables:")
             print("  - FIREBASE_PROJECT_ID: Your Firebase project ID")
             print("  - FIREBASE_CREDENTIALS_PATH: Path to service account JSON")
+            print("  - FIREBASE_API_KEY: Firebase Web API key")
             return False
         except Exception as e:
             print(f"\n✗ Initialization Error: {e}")
             return False
     
+    # ==================== AUTHENTICATION ====================
+    
+    def display_auth_menu(self) -> None:
+        """Display the authentication menu."""
+        print("\n" + "-" * 40)
+        print("AUTHENTICATION")
+        print("-" * 40)
+        print("1. Login")
+        print("2. Register New Account")
+        print("3. Exit")
+        print("-" * 40)
+    
+    def handle_login(self) -> bool:
+        """
+        Handle user login.
+        
+        Returns:
+            True if login was successful
+        """
+        print("\n--- LOGIN ---\n")
+        
+        email = self.get_input("Email: ")
+        password = self.get_input("Password: ")
+        
+        success, message = self.auth_service.login(email, password)
+        
+        if success:
+            print(f"\n✓ {message}")
+            return True
+        else:
+            print(f"\n✗ {message}")
+            return False
+    
+    def handle_register(self) -> bool:
+        """
+        Handle new user registration.
+        
+        Returns:
+            True if registration was successful
+        """
+        print("\n--- REGISTER NEW ACCOUNT ---\n")
+        
+        email = self.get_input("Email: ")
+        display_name = self.get_input("Display Name: ")
+        
+        print("\nPassword must be at least 6 characters.")
+        password = self.get_input("Password: ")
+        confirm_password = self.get_input("Confirm Password: ")
+        
+        if password != confirm_password:
+            print("\n✗ Passwords do not match. Please try again.")
+            return False
+        
+        if len(password) < 6:
+            print("\n✗ Password must be at least 6 characters.")
+            return False
+        
+        success, message = self.auth_service.register(email, password, display_name)
+        
+        if success:
+            print(f"\n✓ {message}")
+            return True
+        else:
+            print(f"\n✗ {message}")
+            return False
+    
+    def run_auth_flow(self) -> bool:
+        """
+        Run the authentication flow.
+        
+        Returns:
+            True if user is authenticated, False to exit
+        """
+        while True:
+            self.display_auth_menu()
+            choice = input("Enter choice: ").strip()
+            
+            if choice == '1':
+                if self.handle_login():
+                    return True
+            elif choice == '2':
+                if self.handle_register():
+                    return True
+            elif choice == '3':
+                return False
+            else:
+                print("\n✗ Invalid choice. Please try again.")
+    
+    # ==================== MAIN MENU ====================
+    
     def display_main_menu(self) -> None:
         """Display the main menu options."""
+        user = self.auth_service.current_user
         print("\n" + "-" * 40)
-        print("MAIN MENU")
+        print(f"MAIN MENU | Logged in as: {user.display_name}")
         print("-" * 40)
         print("1. Project Management")
         print("2. Task Management")
         print("3. View Dashboard")
-        print("4. Exit")
+        print("4. Notifications")
+        print("5. Logout")
         print("-" * 40)
     
     def display_project_menu(self) -> None:
@@ -115,6 +240,23 @@ class ConstructionManagerCLI:
         print("8. Back to Main Menu")
         print("-" * 40)
     
+    def display_notification_menu(self) -> None:
+        """Display the notification management menu."""
+        print("\n" + "-" * 40)
+        print("NOTIFICATIONS (Real-Time Updates)")
+        print("-" * 40)
+        listeners = self.notification_service.get_active_listeners()
+        print(f"Active Listeners: {', '.join(listeners) if listeners else 'None'}")
+        print("-" * 40)
+        print("1. Start Listening to Projects")
+        print("2. Start Listening to Tasks")
+        print("3. Stop All Listeners")
+        print("4. View Recent Notifications")
+        print("5. Clear Notifications")
+        print("6. Toggle Notification Display")
+        print("7. Back to Main Menu")
+        print("-" * 40)
+    
     def get_input(self, prompt: str, required: bool = True) -> str:
         """Get user input with optional validation."""
         while True:
@@ -144,6 +286,43 @@ class ConstructionManagerCLI:
         except ValueError:
             print("Invalid date format. Using no date.")
             return None
+    
+    # ==================== NOTIFICATION OPERATIONS ====================
+    
+    def run_notification_menu(self) -> None:
+        """Handle the notification management menu loop."""
+        while True:
+            self.display_notification_menu()
+            choice = input("Enter choice: ").strip()
+            
+            if choice == '1':
+                if self.notification_service.start_listening("projects"):
+                    print("\n✓ Now listening for project changes!")
+                    print("  You'll see real-time updates when projects change.")
+                else:
+                    print("\n⚠ Already listening to projects.")
+            elif choice == '2':
+                if self.notification_service.start_listening("tasks"):
+                    print("\n✓ Now listening for task changes!")
+                    print("  You'll see real-time updates when tasks change.")
+                else:
+                    print("\n⚠ Already listening to tasks.")
+            elif choice == '3':
+                self.notification_service.stop_all_listeners()
+                print("\n✓ All listeners stopped.")
+            elif choice == '4':
+                self.notification_service.print_recent_notifications()
+            elif choice == '5':
+                self.notification_service.clear_notifications()
+                print("\n✓ Notifications cleared.")
+            elif choice == '6':
+                self._notification_display_enabled = not self._notification_display_enabled
+                status = "enabled" if self._notification_display_enabled else "disabled"
+                print(f"\n✓ Real-time notification display {status}.")
+            elif choice == '7':
+                break
+            else:
+                print("\n✗ Invalid choice. Please try again.")
     
     # ==================== PROJECT OPERATIONS ====================
     
@@ -510,6 +689,10 @@ class ConstructionManagerCLI:
         print("   CONSTRUCTION PROJECT DASHBOARD")
         print("=" * 60)
         
+        user = self.auth_service.current_user
+        print(f"\n👤 USER: {user.display_name} ({user.email})")
+        print(f"   Role: {user.role.value}")
+        
         projects = self.project_repo.get_all()
         tasks = self.task_repo.get_all()
         
@@ -547,6 +730,11 @@ class ConstructionManagerCLI:
         print(f"\n⏱️  HOURS")
         print(f"   Estimated: {total_estimated:.1f}")
         print(f"   Actual: {total_actual:.1f}")
+        
+        # Notification status
+        listeners = self.notification_service.get_active_listeners()
+        print(f"\n🔔 ACTIVE LISTENERS: {', '.join(listeners) if listeners else 'None'}")
+        print(f"   Pending Notifications: {self.notification_service.unread_count}")
         
         print("\n" + "=" * 60)
     
@@ -605,6 +793,21 @@ class ConstructionManagerCLI:
         if not self.initialize():
             return
         
+        # Run authentication flow first
+        print("\n" + "=" * 60)
+        print("   Please login or register to continue")
+        print("=" * 60)
+        
+        if not self.run_auth_flow():
+            print("\nGoodbye!")
+            return
+        
+        # Start real-time listeners after authentication
+        print("\n✓ Starting real-time notifications...")
+        self.notification_service.start_listening("projects")
+        self.notification_service.start_listening("tasks")
+        print("  Listening for changes to projects and tasks.")
+        
         while self.running:
             self.display_main_menu()
             choice = input("Enter choice: ").strip()
@@ -616,13 +819,19 @@ class ConstructionManagerCLI:
             elif choice == '3':
                 self.view_dashboard()
             elif choice == '4':
-                print("\nThank you for using Construction Project Manager!")
+                self.run_notification_menu()
+            elif choice == '5':
+                self.auth_service.logout()
+                print("\n✓ Logged out successfully.")
+                print("Thank you for using Construction Project Manager!")
                 print("Goodbye!\n")
                 self.running = False
             else:
                 print("\n✗ Invalid choice. Please try again.")
         
         # Cleanup
+        if self.notification_service:
+            self.notification_service.stop_all_listeners()
         if self.firebase:
             self.firebase.close()
 

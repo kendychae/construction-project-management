@@ -1,9 +1,9 @@
 """
 Configuration module for Construction Project Manager.
 
-This module handles application configuration including Firebase credentials
-and database settings. Sensitive credentials are loaded from environment
-variables or a local service account file.
+This module handles application configuration including Firebase credentials,
+authentication settings, and database settings. Sensitive credentials are 
+loaded from environment variables or a local service account file.
 
 Author: Construction Solutions
 """
@@ -19,6 +19,7 @@ class FirebaseConfig:
     
     project_id: str
     credentials_path: Optional[str] = None
+    api_key: Optional[str] = None  # Required for Firebase Auth REST API
     
     @classmethod
     def from_environment(cls) -> 'FirebaseConfig':
@@ -28,6 +29,7 @@ class FirebaseConfig:
         Environment Variables:
             FIREBASE_PROJECT_ID: The Firebase project ID
             FIREBASE_CREDENTIALS_PATH: Path to service account JSON file
+            FIREBASE_API_KEY: Firebase Web API key (for authentication)
         
         Returns:
             FirebaseConfig: Configuration instance
@@ -37,6 +39,7 @@ class FirebaseConfig:
         """
         project_id = os.getenv('FIREBASE_PROJECT_ID')
         credentials_path = os.getenv('FIREBASE_CREDENTIALS_PATH')
+        api_key = os.getenv('FIREBASE_API_KEY')
         
         if not project_id:
             raise ValueError(
@@ -55,9 +58,16 @@ class FirebaseConfig:
                 f"Firebase credentials file not found at: {credentials_path}"
             )
         
+        if not api_key:
+            raise ValueError(
+                "FIREBASE_API_KEY environment variable is required. "
+                "Find it in Firebase Console > Project Settings > Web API Key."
+            )
+        
         return cls(
             project_id=project_id,
-            credentials_path=credentials_path
+            credentials_path=credentials_path,
+            api_key=api_key
         )
 
 

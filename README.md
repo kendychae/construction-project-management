@@ -16,9 +16,11 @@ Construction Project Manager is a command-line application designed for construc
 
 ### Key Features
 
+- **User Authentication**: Secure login and registration with Firebase Auth
 - **Project Management**: Create, read, update, and delete construction projects
 - **Task Management**: Manage tasks linked to specific projects
 - **Relational Data**: Two related collections (Projects ↔ Tasks) with referential integrity
+- **Real-Time Notifications**: Instant alerts when cloud data changes
 - **Status Tracking**: Track project and task progress through multiple status stages
 - **Time Logging**: Log actual hours worked against estimated hours
 - **Dashboard View**: Summary statistics for quick project oversight
@@ -27,15 +29,24 @@ Construction Project Manager is a command-line application designed for construc
 
 ## Cloud Database Requirements Fulfilled
 
-| Requirement                           | Implementation                                      |
-| ------------------------------------- | --------------------------------------------------- |
-| ✅ Cloud database service             | Google Firebase Firestore                           |
-| ✅ At least one table                 | Two collections: `projects` and `tasks`             |
-| ✅ Insert data                        | `create()` methods in repositories                  |
-| ✅ Modify data                        | `update()` methods in repositories                  |
-| ✅ Delete data                        | `delete()` methods in repositories                  |
-| ✅ Query/Retrieve data                | `get_all()`, `get_by_id()`, `get_by_status()`, etc. |
-| ✅ **Additional**: Two related tables | Projects and Tasks with `project_id` foreign key    |
+### Basic Requirements
+
+| Requirement               | Implementation                                      |
+| ------------------------- | --------------------------------------------------- |
+| ✅ Cloud database service | Google Firebase Firestore                           |
+| ✅ At least one table     | Three collections: `projects`, `tasks`, and `users` |
+| ✅ Insert data            | `create()` methods in repositories                  |
+| ✅ Modify data            | `update()` methods in repositories                  |
+| ✅ Delete data            | `delete()` methods in repositories                  |
+| ✅ Query/Retrieve data    | `get_all()`, `get_by_id()`, `get_by_status()`, etc. |
+
+### Additional Requirements (ALL THREE Implemented!)
+
+| Requirement                   | Implementation                                          |
+| ----------------------------- | ------------------------------------------------------- |
+| ✅ Real-time notifications    | `NotificationService` with Firestore snapshot listeners |
+| ✅ Two or more related tables | Projects ↔ Tasks linked via `project_id` foreign key    |
+| ✅ User authentication        | `AuthService` using Firebase Auth REST API              |
 
 ---
 
@@ -43,7 +54,8 @@ Construction Project Manager is a command-line application designed for construc
 
 - **Language**: Python 3.9+
 - **Cloud Database**: Google Firebase Firestore
-- **SDK**: firebase-admin
+- **Authentication**: Firebase Auth (REST API)
+- **SDK**: firebase-admin, requests
 - **Architecture**: Repository Pattern, Singleton Pattern
 
 ---
@@ -54,15 +66,18 @@ Construction Project Manager is a command-line application designed for construc
 ConstructionProjectManager/
 ├── src/
 │   ├── __init__.py
-│   ├── config.py              # Configuration management
-│   ├── cli.py                 # Command-line interface
+│   ├── config.py                  # Configuration management
+│   ├── cli.py                     # Command-line interface with auth
 │   ├── models/
 │   │   ├── __init__.py
-│   │   ├── project.py         # Project data model
-│   │   └── task.py            # Task data model
+│   │   ├── project.py             # Project data model
+│   │   ├── task.py                # Task data model
+│   │   └── user.py                # User data model for auth
 │   └── services/
 │       ├── __init__.py
 │       ├── firebase_service.py    # Firebase connection singleton
+│       ├── auth_service.py        # User authentication service
+│       ├── notification_service.py # Real-time notifications
 │       ├── project_repository.py  # Project CRUD operations
 │       └── task_repository.py     # Task CRUD operations
 ├── requirements.txt
@@ -123,15 +138,26 @@ Set the following environment variables:
 # Windows PowerShell
 $env:FIREBASE_PROJECT_ID = "your-project-id"
 $env:FIREBASE_CREDENTIALS_PATH = "C:\path\to\serviceAccountKey.json"
+$env:FIREBASE_API_KEY = "your-web-api-key"
 
 # Windows Command Prompt
 set FIREBASE_PROJECT_ID=your-project-id
 set FIREBASE_CREDENTIALS_PATH=C:\path\to\serviceAccountKey.json
+set FIREBASE_API_KEY=your-web-api-key
 
 # macOS/Linux
 export FIREBASE_PROJECT_ID="your-project-id"
 export FIREBASE_CREDENTIALS_PATH="/path/to/serviceAccountKey.json"
+export FIREBASE_API_KEY="your-web-api-key"
 ```
+
+> **Note**: Find your Web API Key in Firebase Console → Project Settings → General → Web API Key
+
+### Enable Firebase Authentication
+
+1. In Firebase Console, go to **Build → Authentication**
+2. Click **Get Started**
+3. Enable **Email/Password** sign-in method
 
 ### Running the Application
 

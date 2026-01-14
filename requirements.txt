@@ -6,3 +6,6 @@ firebase-admin>=6.2.0
 
 # Google Cloud Firestore (included with firebase-admin, but explicit for clarity)
 google-cloud-firestore>=2.11.0
+
+# HTTP requests library for Firebase Auth REST API
+requests>=2.31.0
