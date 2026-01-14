@@ -1,3 +1,6 @@
+# Ignore environment files and credentials
+.env
+firebase-service-account.json
 # Git Ignore File for Construction Project Manager
 
 # Firebase Service Account Key (SENSITIVE - Never commit!)

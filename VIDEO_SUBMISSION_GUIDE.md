@@ -1,3 +1,18 @@
+## Time Log
+
+| Date       | Hours Worked |
+| ---------- | ------------ |
+| 2026-01-05 | 5            |
+| 2026-01-06 | 5            |
+| 2026-01-07 | 5            |
+| 2026-01-08 | 5            |
+| 2026-01-09 | 5            |
+| 2026-01-10 | 5            |
+| 2026-01-11 | 5            |
+| 2026-01-12 | 5            |
+| 2026-01-13 | 5            |
+| 2026-01-14 | 5            |
+
 # 🎬 Video Submission Guide
 
 **Module #3 - Cloud Database**
@@ -27,7 +42,7 @@
 
 Say this while showing your face:
 
-> "Hi, I'm [YOUR NAME]. This is my Module 3 Cloud Database project. I built a Construction Project Manager using Python and Firebase. My app has ALL THREE additional requirements: user authentication, two related tables, AND real-time notifications."
+> "Hi, I'm Kendahl Bingham. This is my Module 3 Cloud Database project. I built a Construction Project Manager using Python and Firebase. My app has ALL THREE additional requirements: user authentication, two related tables, AND real-time notifications."
 
 ---
 
